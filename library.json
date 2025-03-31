@@ -1,0 +1,14 @@
+{
+    "name": "M5Dial_Gui",
+    "version": "1.0.0",
+    "description": "M5Dial based library with ready to go GUI elements",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/tuptusstokrotka/M5DIal_GUI.git"
+    },
+    "frameworks": ["arduino", "espidf"],
+    "platforms": ["espressif32"],
+    "packageRepositories": [
+      "https://github.com/m5stack/M5Dial.git#1.0.2"
+    ]
+}
