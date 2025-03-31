@@ -9,6 +9,9 @@
 #define DotX(angle) (x + cos(radians(angle)) * MID_RADIUS)
 #define DotY(angle) (y + sin(radians(angle)) * MID_RADIUS)
 
+#define LINEAR   0
+#define SYMETRIC 1
+
 class Bar : public GUI_Element {
     unsigned int r;         // Inner radius
     unsigned int R;         // Outer radius
@@ -16,30 +19,73 @@ class Bar : public GUI_Element {
     int startAngle;
     int sweepAngle;
 
-    bool dual_color = false;            // Use 2 colors for the Bar (split in half the range)
-    uint16_t second_color = YELLOW;     // Second Bar color (dual color must be enabled)
+    bool mode             = LINEAR;
+    uint16_t second_color = YELLOW;     // Second Bar color (MODE_SYMETRIC must be enabled)
 
-    void Draw(float percent){
+    void EnableMode(bool mode){ this->mode = mode; }
+
+    void DrawLinear(float& percent){
         int endAngle = startAngle + (int)(sweepAngle * percent);
+        /* draw colored bar and start dot */
+        M5Dial.Display.fillArc(x, y, r, R, startAngle, endAngle, color);
+        M5Dial.Display.fillCircle(DotX(startAngle), DotY(startAngle), (thickness / 2) + 1, color);
 
-        /* draw colored bar and start dot - DUAL COLOR */
-        if(dual_color){
-            if(percent <= 0.5){
-                M5Dial.Display.fillArc(x, y, r, R, startAngle, endAngle, second_color);
-                M5Dial.Display.fillCircle(DotX(startAngle), DotY(startAngle), (thickness / 2) + 1, second_color);
-            }
-            else{
-                M5Dial.Display.fillArc(x, y, r, R, startAngle, endAngle, color);
-                M5Dial.Display.fillCircle(DotX(startAngle), DotY(startAngle), (thickness / 2) + 1, color);
-            }
-        }
-        else{
-            M5Dial.Display.fillArc(x, y, r, R, startAngle, endAngle, color);
-            M5Dial.Display.fillCircle(DotX(startAngle), DotY(startAngle), (thickness / 2) + 1, color);
-        }
         /* draw white progress dot */
         M5Dial.Display.fillCircle(DotX(endAngle), DotY(endAngle), (thickness / 2) + 1, WHITE);
     }
+    void ClearLinear(float& percent){
+        int endAngle = startAngle + (int)(sweepAngle * percent);
+
+        /* Black bars outside the bar to clear White Dot - Dummy but works */
+        M5Dial.Display.fillArc(x, y, R+1, R+2, startAngle, startAngle+sweepAngle, bgcolor);
+        M5Dial.Display.fillArc(x, y, r-1, r-2, startAngle, startAngle+sweepAngle, bgcolor);
+
+        /* draw gray bar from progress till the end +/-1 to clear the orange residue */
+        M5Dial.Display.fillArc(x, y, r, R, endAngle, startAngle + sweepAngle, bgcolor);
+        /* draw gray end dot */
+        M5Dial.Display.fillCircle(DotX(startAngle + sweepAngle), DotY(startAngle + sweepAngle), (thickness / 2) + 1, bgcolor);
+    }
+
+    void DrawSymetric(float& percent){
+        int midAngle = startAngle + (int)(sweepAngle * 0.5);
+        int endAngle = startAngle + (int)(sweepAngle * percent);
+
+        if(percent <= 0.5){
+            M5Dial.Display.fillArc(x, y, r, R, endAngle, midAngle, second_color);
+        }
+        else{
+            M5Dial.Display.fillArc(x, y, r, R, midAngle, endAngle, color);
+        }
+
+        /* draw white progress dot */
+        M5Dial.Display.fillCircle(DotX(endAngle), DotY(endAngle), (thickness / 2) + 1, WHITE);
+    }
+    void ClearSymetric(float& percent){
+        int midAngle = startAngle + (int)(sweepAngle * 0.5);
+        int endAngle = startAngle + (int)(sweepAngle * percent);
+
+        /* Black bars outside the bar to clear White Dot - Dummy but works */
+        M5Dial.Display.fillArc(x, y, R+1, R+2, startAngle, startAngle+sweepAngle, bgcolor);
+        M5Dial.Display.fillArc(x, y, r-1, r-2, startAngle, startAngle+sweepAngle, bgcolor);
+
+        if(percent <= 0.5){
+            /* draw gray bar from start till the progress */
+            M5Dial.Display.fillArc(x, y, r, R, startAngle, endAngle,                bgcolor);
+            /* draw gray bar from mid till the end */
+            M5Dial.Display.fillArc(x, y, r, R, midAngle,   startAngle + sweepAngle, bgcolor);
+        }
+        else{
+            /* draw gray bar from start till the mid */
+            M5Dial.Display.fillArc(x, y, r, R, startAngle, midAngle,                bgcolor);
+            /* draw gray bar from progress till the end */
+            M5Dial.Display.fillArc(x, y, r, R, endAngle,   startAngle + sweepAngle, bgcolor);
+        }
+
+        /* draw gray dots at the both ends */
+        M5Dial.Display.fillCircle(DotX(startAngle),              DotY(startAngle + sweepAngle), (thickness / 2) + 1, bgcolor);
+        M5Dial.Display.fillCircle(DotX(startAngle + sweepAngle), DotY(startAngle + sweepAngle), (thickness / 2) + 1, bgcolor);
+    }
+
 
 public:
     Bar(int x, int y, unsigned int r, unsigned int thickness, int startAngle, int sweepAngle)
@@ -48,7 +94,9 @@ public:
     }
     ~Bar() override {}
 
-    void EnableDualColor(bool enable){ dual_color = enable; }
+    inline void EnableLinearMode(){ EnableMode(LINEAR); }
+    inline void EnableSymmetricMode(){ EnableMode(SYMETRIC); }
+
     void SetDualColor(uint16_t color){ second_color = color; }
     /**
      * @brief Progress bar update function using bound value with force update refresh param.
@@ -77,20 +125,11 @@ public:
 
         lastValue.F_LastValue = percent;
         Clear(percent);
-        Draw(percent);
+        mode == LINEAR ? DrawLinear(percent) : DrawSymetric(percent);
     }
 
-    void Clear(float percent){
-        int endAngle = startAngle + (int)(sweepAngle * percent);
-
-        /* Black bars outside the bar to clear White Dot - Dummy but works */
-        M5Dial.Display.fillArc(x, y, R+1, R+2, startAngle, startAngle+sweepAngle, bgcolor);
-        M5Dial.Display.fillArc(x, y, r-1, r-2, startAngle, startAngle+sweepAngle, bgcolor);
-
-        /* draw gray bar from progress till the end +/-1 to clear the orange residue */
-        M5Dial.Display.fillArc(x, y, r, R, endAngle, startAngle + sweepAngle, bgcolor);
-        /* draw gray end dot */
-        M5Dial.Display.fillCircle(DotX(startAngle + sweepAngle), DotY(startAngle + sweepAngle), (thickness / 2) + 1, bgcolor);
+    void Clear(float& percent){
+        mode == LINEAR ? ClearLinear(percent) : ClearSymetric(percent);
     }
 };
 
