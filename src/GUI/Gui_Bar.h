@@ -20,9 +20,14 @@ class Bar : public GUI_Element {
     int sweepAngle;
 
     bool mode             = LINEAR;
-    uint16_t second_color = YELLOW;     // Second Bar color (MODE_SYMETRIC must be enabled)
+    uint16_t second_color = WHITE;     // Second Bar color (MODE_SYMETRIC must be enabled)
 
     void EnableMode(bool mode){ this->mode = mode; }
+
+    void DrawWhiteDot(float& percent){
+        int endAngle = startAngle + (int)(sweepAngle * percent);
+        M5Dial.Display.fillCircle(DotX(endAngle), DotY(endAngle), (thickness / 2) + 1, WHITE);
+    }
 
     void DrawLinear(float& percent){
         int endAngle = startAngle + (int)(sweepAngle * percent);
@@ -31,7 +36,7 @@ class Bar : public GUI_Element {
         M5Dial.Display.fillCircle(DotX(startAngle), DotY(startAngle), (thickness / 2) + 1, color);
 
         /* draw white progress dot */
-        M5Dial.Display.fillCircle(DotX(endAngle), DotY(endAngle), (thickness / 2) + 1, WHITE);
+        DrawWhiteDot(percent);
     }
     void ClearLinear(float& percent){
         int endAngle = startAngle + (int)(sweepAngle * percent);
@@ -58,7 +63,7 @@ class Bar : public GUI_Element {
         }
 
         /* draw white progress dot */
-        M5Dial.Display.fillCircle(DotX(endAngle), DotY(endAngle), (thickness / 2) + 1, WHITE);
+        DrawWhiteDot(percent);
     }
     void ClearSymetric(float& percent){
         int midAngle = startAngle + (int)(sweepAngle * 0.5);
@@ -88,6 +93,11 @@ class Bar : public GUI_Element {
 
 
 public:
+    Bar(int x, int y, unsigned int r, unsigned int thickness, int sweepAngle)
+    : GUI_Element(x, y, r * 2, r * 2), r(r), thickness(thickness), sweepAngle(sweepAngle) {
+        startAngle = 90 + (360 - sweepAngle) / 2;
+        R = r + thickness;
+    }
     Bar(int x, int y, unsigned int r, unsigned int thickness, int startAngle, int sweepAngle)
         : GUI_Element(x, y, r * 2, r * 2), r(r), thickness(thickness), startAngle(startAngle), sweepAngle(sweepAngle) {
             R = r + thickness;
@@ -97,7 +107,7 @@ public:
     inline void EnableLinearMode(){ EnableMode(LINEAR); }
     inline void EnableSymmetricMode(){ EnableMode(SYMETRIC); }
 
-    void SetDualColor(uint16_t color){ second_color = color; }
+    void SetSecondColor(uint16_t color){ second_color = color; }
     /**
      * @brief Progress bar update function using bound value with force update refresh param.
      * @attention This uses the array of pointers.
@@ -110,10 +120,13 @@ public:
         // Get values
         long** values = static_cast<long**>(boundValue);
         long curr = *(values[0]);
-        long max  = *(values[1]);
+        long low  = *(values[1]);
+        long max  = *(values[2]);
+
+        long range = (max - low);
 
         // Get the percent
-        float percent = (max > 0) ? float(curr) / float(max) : 0;
+        float percent = (range > 0) ? float(curr - low) / float(range) : 0;
         percent = constrain(percent, 0.0, 1.0);
 
         if(isnan(percent))
