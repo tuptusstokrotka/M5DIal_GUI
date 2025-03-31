@@ -16,8 +16,10 @@ class Bar : public GUI_Element {
     unsigned int r;         // Inner radius
     unsigned int R;         // Outer radius
     unsigned int thickness; // Bar width
-    int startAngle;
-    int sweepAngle;
+    int startAngle;         // Starting bar angle
+    int sweepAngle;         // Total bar angle
+
+    bool whiteDot = false;  // White dot on current setting
 
     bool mode             = LINEAR;
     uint16_t second_color = WHITE;     // Second Bar color (MODE_SYMETRIC must be enabled)
@@ -25,6 +27,9 @@ class Bar : public GUI_Element {
     void EnableMode(bool mode){ this->mode = mode; }
 
     void DrawWhiteDot(float& percent){
+        if(!whiteDot)
+            return;
+
         int endAngle = startAngle + (int)(sweepAngle * percent);
         M5Dial.Display.fillCircle(DotX(endAngle), DotY(endAngle), (thickness / 2) + 1, WHITE);
     }
@@ -41,12 +46,16 @@ class Bar : public GUI_Element {
     void ClearLinear(float& percent){
         int endAngle = startAngle + (int)(sweepAngle * percent);
 
+        /* draw gray bar from progress till the end +/-1 to clear the orange residue */
+        M5Dial.Display.fillArc(x, y, r, R, endAngle, startAngle + sweepAngle, bgcolor);
+
+        if(!whiteDot)
+            return;
+
         /* Black bars outside the bar to clear White Dot - Dummy but works */
         M5Dial.Display.fillArc(x, y, R+1, R+2, startAngle, startAngle+sweepAngle, bgcolor);
         M5Dial.Display.fillArc(x, y, r-1, r-2, startAngle, startAngle+sweepAngle, bgcolor);
 
-        /* draw gray bar from progress till the end +/-1 to clear the orange residue */
-        M5Dial.Display.fillArc(x, y, r, R, endAngle, startAngle + sweepAngle, bgcolor);
         /* draw gray end dot */
         M5Dial.Display.fillCircle(DotX(startAngle + sweepAngle), DotY(startAngle + sweepAngle), (thickness / 2) + 1, bgcolor);
     }
@@ -55,11 +64,14 @@ class Bar : public GUI_Element {
         int midAngle = startAngle + (int)(sweepAngle * 0.5);
         int endAngle = startAngle + (int)(sweepAngle * percent);
 
-        if(percent <= 0.5){
-            M5Dial.Display.fillArc(x, y, r, R, endAngle, midAngle, second_color);
+        if(percent < 0.5){
+            M5Dial.Display.fillArc(x, y, r, R, endAngle,    midAngle,   second_color);
+        }
+        else if(percent == 0.5 && !whiteDot){
+            M5Dial.Display.fillArc(x, y, r, R, midAngle-2,  midAngle+2, WHITE);
         }
         else{
-            M5Dial.Display.fillArc(x, y, r, R, midAngle, endAngle, color);
+            M5Dial.Display.fillArc(x, y, r, R, midAngle,    endAngle,   color);
         }
 
         /* draw white progress dot */
@@ -68,10 +80,6 @@ class Bar : public GUI_Element {
     void ClearSymetric(float& percent){
         int midAngle = startAngle + (int)(sweepAngle * 0.5);
         int endAngle = startAngle + (int)(sweepAngle * percent);
-
-        /* Black bars outside the bar to clear White Dot - Dummy but works */
-        M5Dial.Display.fillArc(x, y, R+1, R+2, startAngle, startAngle+sweepAngle, bgcolor);
-        M5Dial.Display.fillArc(x, y, r-1, r-2, startAngle, startAngle+sweepAngle, bgcolor);
 
         if(percent <= 0.5){
             /* draw gray bar from start till the progress */
@@ -85,6 +93,13 @@ class Bar : public GUI_Element {
             /* draw gray bar from progress till the end */
             M5Dial.Display.fillArc(x, y, r, R, endAngle,   startAngle + sweepAngle, bgcolor);
         }
+
+        if(!whiteDot)
+            return;
+
+        /* Black bars outside the bar to clear White Dot - Dummy but works */
+        M5Dial.Display.fillArc(x, y, R+1, R+2, startAngle, startAngle+sweepAngle, bgcolor);
+        M5Dial.Display.fillArc(x, y, r-1, r-2, startAngle, startAngle+sweepAngle, bgcolor);
 
         /* draw gray dots at the both ends */
         M5Dial.Display.fillCircle(DotX(startAngle),              DotY(startAngle + sweepAngle), (thickness / 2) + 1, bgcolor);
@@ -108,6 +123,8 @@ public:
     inline void EnableSymmetricMode(){ EnableMode(SYMETRIC); }
 
     void SetSecondColor(uint16_t color){ second_color = color; }
+    void EnableWhiteDot(bool enable){ whiteDot = enable; }
+
     /**
      * @brief Progress bar update function using bound value with force update refresh param.
      * @attention This uses the array of pointers.
