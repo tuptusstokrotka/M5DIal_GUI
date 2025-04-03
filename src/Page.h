@@ -1,5 +1,5 @@
-#ifndef DISPLAY_H
-#define DISPLAY_H
+#ifndef PAGE_H
+#define PAGE_H
 
 #pragma once
 
