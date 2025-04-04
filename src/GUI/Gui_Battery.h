@@ -73,10 +73,10 @@ public:
 
     void Update(bool force_update = false) override {
         // Value not assigned
-        if (!boundValue) return;
+        if (!this->value) return;
 
         // Get Value
-        float percent = *static_cast<float*>(boundValue);
+        float percent = *static_cast<float*>(this->value);
         float converted = constrain(percent / 100.0f, 0.0f, 1.0f);
 
         // Do not draw is value is incorrect

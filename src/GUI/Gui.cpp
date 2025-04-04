@@ -1,9 +1,13 @@
 #include "Gui.h"
 
 GUI_Element::GUI_Element(int x, int y, int w, int h)
-    : x(x), y(y), w(w), h(h), boundValue(nullptr) { }
+    : x(x), y(y), w(w), h(h) { }
 
-GUI_Element::~GUI_Element(){ }
+GUI_Element::~GUI_Element() {
+    if (this->value != nullptr) {
+        delete[] static_cast<char*>(this->value);
+    }
+}
 
 void GUI_Element::Clear(bool reset){
     // Black Bar that will cover whole GUI element
@@ -13,7 +17,10 @@ void GUI_Element::Clear(bool reset){
         return;
 
     // Clear Last values
-    S_LastValue = "";
+    if (S_LastValue != nullptr) {
+        delete[] S_LastValue;
+        S_LastValue = nullptr;
+    }
     // Default reset for union
     lastValue.I_LastValue = 0;
 }
@@ -30,39 +37,3 @@ void GUI_Element::SetColor(uint8_t r, uint8_t g, uint8_t b){ this->color = M5Dia
 
 void GUI_Element::SetBgColor(const uint16_t color){ this->bgcolor = color; }
 void GUI_Element::SetBgColor(uint8_t r, uint8_t g, uint8_t b){ this->bgcolor = M5Dial.Display.color565(r,g,b); }
-
-void GUI_Element::SetValue(int value) {
-    // Value not bound
-    if (boundValue == nullptr)
-        return;
-    // Update bound variable
-    *static_cast<int*>(boundValue) = value;
-    Update();
-}
-
-void GUI_Element::SetValue(long value) {
-    // Value not bound
-    if (boundValue == nullptr)
-        return;
-    // Update bound variable
-    *static_cast<long*>(boundValue) = value;
-    Update();
-}
-
-void GUI_Element::SetValue(float value) {
-    // Value not bound
-    if (boundValue == nullptr)
-        return;
-    // Update bound variable
-    *static_cast<float*>(boundValue) = value;
-    Update();
-}
-
-void GUI_Element::SetValue(String value) {
-    // Value not bound
-    if (boundValue == nullptr)
-        return;
-    // Update bound variable
-    *static_cast<String*>(boundValue) = value;
-    Update();
-}

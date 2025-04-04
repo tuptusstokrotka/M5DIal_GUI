@@ -123,6 +123,7 @@ public:
     inline void EnableSymmetricMode(){ EnableMode(SYMETRIC); }
 
     void SetSecondColor(uint16_t color){ second_color = color; }
+
     void EnableWhiteDot(bool enable){ whiteDot = enable; }
 
     /**
@@ -132,10 +133,10 @@ public:
      */
     void Update(bool force_update = false) override {
         // Value not assigned
-        if (!boundValue) return;
+        if (!this->value) return;
 
         // Get values
-        long** values = static_cast<long**>(boundValue);
+        long** values = static_cast<long**>(this->value);
         long curr = *(values[0]);
         long low  = *(values[1]);
         long max  = *(values[2]);
