@@ -7,16 +7,23 @@
 #include "Gui_Text.h"
 
 class Number : public Text {
-    std::string ConvertToString(VariantType value) {
-        return std::visit([](auto&& arg) -> std::string {
-            using T = std::decay_t<decltype(arg)>;  // Get the type of the argument
+    uint8_t precision = 2;
 
-            if constexpr      (std::is_same_v<T, int>)          { return std::to_string(arg); }
-            else if constexpr (std::is_same_v<T, unsigned int>) { return std::to_string(arg); }
-            else if constexpr (std::is_same_v<T, long>)         { return std::to_string(arg); }
-            else if constexpr (std::is_same_v<T, double>)       { return std::to_string(arg); }
-            else if constexpr (std::is_same_v<T, float>)        { return std::to_string(arg); }
-            else                                                { return "[Invalid Type]"; }
+    std::string ConvertToString(VariantType value) {
+        return std::visit([this](auto&& arg) -> std::string {
+            using T = std::decay_t<decltype(arg)>;
+
+            if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
+                char buffer[32];
+                snprintf(buffer, sizeof(buffer), "%.*f", precision, static_cast<double>(arg));
+                return std::string(buffer);
+            }
+            else if constexpr (std::is_same_v<T, int> || std::is_same_v<T, unsigned int> || std::is_same_v<T, long>) {
+                return std::to_string(arg);
+            }
+            else {
+                return "[Invalid Type]";
+            }
         }, value);
     }
 
@@ -42,6 +49,8 @@ public:
         Clear();
         Draw(str);
     }
+
+    void SetPrecision(uint8_t precision){ this->precision = precision; }
 };
 
 

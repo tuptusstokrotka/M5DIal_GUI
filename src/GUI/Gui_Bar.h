@@ -140,14 +140,13 @@ public:
 
         // Get Value
         VariantType val = getCurrentValue();
-        std::string str;
 
         // Get the percent
         float percent;
         if (std::holds_alternative<float>(val)) {
             percent = std::get<float>(val);
         }else if (std::holds_alternative<double>(val)) {
-            percent = std::get<double>(val);
+            percent = static_cast<float>(std::get<double>(val));
         } else{
             percent = NAN;
         }
