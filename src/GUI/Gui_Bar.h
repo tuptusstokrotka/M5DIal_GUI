@@ -9,8 +9,11 @@
 #define DotX(angle) (x + cos(radians(angle)) * MID_RADIUS)
 #define DotY(angle) (y + sin(radians(angle)) * MID_RADIUS)
 
-#define LINEAR   0
-#define SYMETRIC 1
+#define LINEAR      0
+#define SYMETRIC    1
+
+#define PERCENT_0_1    0
+#define PERCENT_0_100  1
 
 class Bar : public GUI_Element {
     unsigned int r;         // Inner radius
@@ -22,6 +25,7 @@ class Bar : public GUI_Element {
     bool whiteDot = false;  // White dot on current setting
 
     bool mode             = LINEAR;
+    bool input_mode       = PERCENT_0_100;
     uint16_t second_color = WHITE;     // Second Bar color (MODE_SYMETRIC must be enabled)
 
     void EnableMode(bool mode){ this->mode = mode; }
@@ -125,6 +129,7 @@ public:
 
     inline void EnableLinearMode(){ EnableMode(LINEAR); }
     inline void EnableSymmetricMode(){ EnableMode(SYMETRIC); }
+    inline void SetInputMode(bool mode){ this->input_mode = mode; }
 
     void SetSecondColor(uint16_t color){ second_color = color; }
 
@@ -152,7 +157,11 @@ public:
         }
 
         // Limit to 0 - 100 %
-        percent = constrain(percent / 100.0f, 0.0f, 1.0f);
+        if(input_mode == PERCENT_0_100)
+            percent = constrain(percent / 100.0f, 0.0f, 1.0f);
+        else
+            percent = constrain(percent, 0.0f, 1.0f);
+
 
         if(isnan(percent))
             return;
