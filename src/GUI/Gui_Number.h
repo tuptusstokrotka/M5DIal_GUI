@@ -6,65 +6,41 @@
 #include "Gui.h"
 #include "Gui_Text.h"
 
-// A template number class
-template <typename T>
 class Number : public Text {
-    // A helper function to convert any number type to C-style string
-    void ConvertToString(char* buffer) {
-        if (std::is_integral<T>::value) {
-            // If T is an integer (e.g., int, long, etc.)
-            snprintf(buffer, 32, "%ld", *static_cast<T*>(this->value));  // Use long format to handle int/long types
-        } else if (std::is_floating_point<T>::value) {
-            // If T is a floating point (e.g., float, double)
-            snprintf(buffer, 32, "%.2f", *static_cast<T*>(this->value));  // Format float with 2 decimal places
-        }
-    }
+    std::string ConvertToString(VariantType value) {
+        return std::visit([](auto&& arg) -> std::string {
+            using T = std::decay_t<decltype(arg)>;  // Get the type of the argument
 
-    bool ValueHasChanged(T value){
-        if constexpr (std::is_same<T, int>::value) {
-            if (lastValue.I_LastValue == value) return false;
-            lastValue.I_LastValue = value;
-        } else if constexpr (std::is_same<T, long>::value) {
-            if (lastValue.L_LastValue == value) return false;
-            lastValue.L_LastValue = value;
-        } else if constexpr (std::is_same<T, float>::value) {
-            if (lastValue.F_LastValue == value) return false;
-            lastValue.F_LastValue = value;
-        }
-        return true;
+            if constexpr      (std::is_same_v<T, int>)          { return std::to_string(arg); }
+            else if constexpr (std::is_same_v<T, unsigned int>) { return std::to_string(arg); }
+            else if constexpr (std::is_same_v<T, long>)         { return std::to_string(arg); }
+            else if constexpr (std::is_same_v<T, double>)       { return std::to_string(arg); }
+            else if constexpr (std::is_same_v<T, float>)        { return std::to_string(arg); }
+            else                                                { return "[Invalid Type]"; }
+        }, value);
     }
 
 public:
-    Number(int x, int y, int w, const lgfx::GFXfont* font) : Text(x, y, w, font, false) {
-        if constexpr (std::is_same<T, int>::value) {
-            lastValue.I_LastValue = 0;
-        } else if constexpr (std::is_same<T, long>::value) {
-            lastValue.L_LastValue = 0;
-        } else if constexpr (std::is_same<T, float>::value) {
-            lastValue.F_LastValue = 0.0f;
-        }
-    };
+    Number(int x, int y, int w, const lgfx::GFXfont* font) : Text(x, y, w, font, false) {};
     ~Number() {}
 
     void Update(bool force_update = false) override {
         // Value not assigned
-        if (this->value == nullptr) return;
-
-        // Check if the value has changed
-        if(!ValueHasChanged(*static_cast<T*>(this->value)) && !force_update)
+        if (!hasChanged(force_update))
             return;
 
+        // Get Value
+        VariantType num = getCurrentValue();
+        std::string str;
+
         // Convert the value to a string
-        char str[32];
-        ConvertToString(str);
+        str = ConvertToString(num);
 
         // Config text - needed to estimate font width
         M5Dial.Display.setFont(font);
-        M5Dial.Display.setTextColor(color);
 
-        // Clear previous text and draw the new one
-        Text::Clear();
-        Text::Draw(str);
+        Clear();
+        Draw(str);
     }
 };
 
@@ -74,7 +50,7 @@ public:
     Timer(int x, int y, int w, const lgfx::GFXfont* font) : Text(x, y, w, font, false) {};
     ~Timer(){};
 
-    char* SecToStr(long time) {
+    std::string SecToStr(long time) {
         int hours   = (time / 3600);
         int minutes = (time % 3600) / 60;
         int seconds = (time % 60);
@@ -92,25 +68,26 @@ public:
 
     void Update(bool force_update = false) override {
         // Value not assigned
-        if (!this->value) return;
-
-        // Get Value
-        long time = *static_cast<long*>(this->value);
-        char* timeString = SecToStr(time);
-
-        // If values have not changed and force_update is false
-        if(S_LastValue == timeString && !force_update)
+        if (!hasChanged(force_update))
             return;
 
-        // Text has changed
-        S_LastValue = timeString;
+        // Get Value
+        VariantType time = getCurrentValue();
+        std::string str;
+
+        if (std::holds_alternative<long>(time)) {
+            str = SecToStr(std::get<long>(time));
+        } else if (std::holds_alternative<int>(time)) {
+            str = SecToStr(std::get<int>(time));
+        } else {
+            str = "[Invalid Type]";  // Default message in case of invalid type
+        }
 
         // Config text - needed to estimate font width
         M5Dial.Display.setFont(font);
-        M5Dial.Display.setTextColor(color);
 
-        Text::Clear();
-        Text::Draw(timeString);
+        Clear();
+        Draw(str);
     }
 };
 

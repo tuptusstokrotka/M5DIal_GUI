@@ -63,32 +63,32 @@ public:
         int offset = w / 2;
         // Black Bar that will cover whole GUI element
         M5Dial.Display.fillRect(x-offset, y, w, h, bgcolor);
-
-        if(!reset)
-            return;
-
-        // Clear Last value
-        lastValue.F_LastValue = 0.0f;
     }
 
     void Update(bool force_update = false) override {
-        // Value not assigned
-        if (!this->value) return;
+        // Check if value has changed
+        if (!hasChanged(force_update))
+            return;
 
         // Get Value
-        float percent = *static_cast<float*>(this->value);
+        VariantType val = getCurrentValue();
+        std::string str;
+
+        // Get the percent
+        float percent;
+        if (std::holds_alternative<float>(val)) {
+            percent = std::get<float>(val);
+        }else if (std::holds_alternative<double>(val)) {
+            percent = std::get<double>(val);
+        } else{
+            percent = NAN;
+        }
+
         float converted = constrain(percent / 100.0f, 0.0f, 1.0f);
 
         // Do not draw is value is incorrect
         if(isnan(percent))
             return;
-
-        // Percent has not changed and force_update is false
-        if(lastValue.F_LastValue == converted && !force_update)
-            return;
-
-        // Percent has changed
-        lastValue.F_LastValue = converted;
 
         Clear();
         Percent2Color(converted);

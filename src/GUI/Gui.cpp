@@ -3,26 +3,23 @@
 GUI_Element::GUI_Element(int x, int y, int w, int h)
     : x(x), y(y), w(w), h(h) { }
 
-GUI_Element::~GUI_Element() {
-    if (this->value != nullptr) {
-        delete[] static_cast<char*>(this->value);
-    }
+void GUI_Element::Clear(bool reset){
+    M5Dial.Display.fillRect(x-(w/2), y-(h/2), w, h, bgcolor);
 }
 
-void GUI_Element::Clear(bool reset){
-    // Black Bar that will cover whole GUI element
-    M5Dial.Display.fillRect(x-(w/2), y-(h/2), w, h, bgcolor);
+GUI_Element::VariantType GUI_Element::getCurrentValue() const {
+    return isBound ? getter() : ownedValue;
+}
 
-    if(!reset)
-        return;
+bool GUI_Element::hasChanged(bool force) {
+    if (force) return true;
 
-    // Clear Last values
-    if (S_LastValue != nullptr) {
-        delete[] S_LastValue;
-        S_LastValue = nullptr;
+    VariantType current = getCurrentValue();
+    if (lastValue != current) {
+        lastValue = current;
+        return true;
     }
-    // Default reset for union
-    lastValue.I_LastValue = 0;
+    return false;
 }
 
 void GUI_Element::SetX(int x){ this->x = x; }

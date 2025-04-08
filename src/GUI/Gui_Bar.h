@@ -36,8 +36,12 @@ class Bar : public GUI_Element {
 
     void DrawLinear(float& percent){
         int endAngle = startAngle + (int)(sweepAngle * percent);
-        /* draw colored bar and start dot */
+        /* draw colored bar */
         M5Dial.Display.fillArc(x, y, r, R, startAngle, endAngle, color);
+
+        if(!whiteDot)
+            return;
+        /* draw colored start dot */
         M5Dial.Display.fillCircle(DotX(startAngle), DotY(startAngle), (thickness / 2) + 1, color);
 
         /* draw white progress dot */
@@ -128,33 +132,32 @@ public:
 
     /**
      * @brief Progress bar update function using bound value with force update refresh param.
-     * @attention This uses the array of pointers.
-     * `long* arr[] = { &elapsed, &duration };`
      */
     void Update(bool force_update = false) override {
-        // Value not assigned
-        if (!this->value) return;
+        // Check if value has changed
+        if (!hasChanged(force_update))
+            return;
 
-        // Get values
-        long** values = static_cast<long**>(this->value);
-        long curr = *(values[0]);
-        long low  = *(values[1]);
-        long max  = *(values[2]);
-
-        long range = (max - low);
+        // Get Value
+        VariantType val = getCurrentValue();
+        std::string str;
 
         // Get the percent
-        float percent = (range > 0) ? float(curr - low) / float(range) : 0;
-        percent = constrain(percent, 0.0, 1.0);
+        float percent;
+        if (std::holds_alternative<float>(val)) {
+            percent = std::get<float>(val);
+        }else if (std::holds_alternative<double>(val)) {
+            percent = std::get<double>(val);
+        } else{
+            percent = NAN;
+        }
+
+        // Limit to 0 - 100 %
+        percent = constrain(percent / 100.0f, 0.0f, 1.0f);
 
         if(isnan(percent))
             return;
 
-        // If values has not changed and force_update is false
-        if(lastValue.F_LastValue == (percent) && !force_update)
-            return;
-
-        lastValue.F_LastValue = percent;
         Clear(percent);
         mode == LINEAR ? DrawLinear(percent) : DrawSymetric(percent);
     }

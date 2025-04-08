@@ -9,7 +9,6 @@
 #define SCROLL_DELAY 500            // Delay between scrolling each letter (ms)
 #define SCROLL_DELIMITER "      "   // Scrolling delimiter between the end and beginning of a string
 
-
 class Text : public GUI_Element {
 protected:
     /* Font */
@@ -18,97 +17,94 @@ protected:
     bool trimming = true;           // Trim text out of the textbox
     /* Scrolling */
     bool scrolling = false;         // Enable scrolling
-    bool scroll_loop = true;        // Adding the string at the end of scrolling
+    bool scroll_loop = true;        // Add delimiter and seamless scrolling in loop
     unsigned int scroll_index = 0;  // Current 1st scrolling index
     unsigned long last_update = 0;  // Last update milliseconds
 
-    void Draw(char* str){
-        char* text = Trim(str);
-        M5Dial.Display.drawString(text, x, y);
+    void Draw(const std::string& str) {
+        M5Dial.Display.setTextColor(color);
+        M5Dial.Display.drawString(str.c_str(), x, y);
     }
 
-    /**
-     * @brief Simple scrolling text via text trimming
-     * @todo Use text to sprite conversion, then use M5dial scroll functions
-     */
-    void DrawScrolling(char* str){
+    bool CheckScrolling(void){
+        // Scrolling not set
         if(!scrolling)
-            return;
+            return false;
 
+        // Timer has passed
+        if(pdTICKS_TO_MS(xTaskGetTickCount() - last_update) < SCROLL_DELAY)
+            return false;
+
+        last_update = xTaskGetTickCount();
+        return true;
+    }
+    std::string GetScrolling(const std::string& str){
         // do NOT scroll if the text is within the textbox width
-        if(M5Dial.Display.textWidth(str) <= w)
-            return;
+        if(M5Dial.Display.textWidth(str.c_str()) <= w)
+            return str;
 
-        // Check timer
-        if(last_update + SCROLL_DELAY > millis())
-            return;
+        std::string scrolled = str;
 
-        char* text = strdup(str);  // Copy the string for manipulation
-        int loop_offset = 0;
-
-        // Update scrolling text
-        last_update = millis();
-
+        // Scrolling in loop with delimiter?
+        int loop_offset = 0; // Add delimiter length to the scrolling width
         if(scroll_loop){
-            text = strcat(text, SCROLL_DELIMITER);
+            scrolled = scrolled + SCROLL_DELIMITER + scrolled;
             loop_offset = strlen(SCROLL_DELIMITER);
         }
 
-        ++scroll_index %= (strlen(str) + loop_offset);
-        text = text + scroll_index;
+        ++scroll_index %= (strlen(str.c_str()) + loop_offset);
+        scrolled.erase(scrolled.begin(), scrolled.begin()+scroll_index);
 
-        Clear();
-        Draw(text);
+        return scrolled;
     }
-
-    char* Trim(char* str){
-        // Trimming disabled
-        if(!trimming)
+    std::string GetTrimmed(const std::string& str){
+        // string width is within the textbox - do NOT trim
+        if(M5Dial.Display.textWidth(str.c_str()) <= w)
             return str;
 
-        // Short string - fits inside textbox
-        if(M5Dial.Display.textWidth(str) <= w)
-            return str;
-
-        // Trimming
-        char* trimmed = strdup(str);  // Copy string to avoid modifying the original
-        while (M5Dial.Display.textWidth(trimmed) > w && strlen(trimmed) > 0) {
-            trimmed[strlen(trimmed) - 1] = '\0';  // Remove last character if it's too wide
+        // Trimming to fit the box
+        std::string trimmed = str;
+        while (M5Dial.Display.textWidth(trimmed.c_str()) > w && !trimmed.empty()) {
+            trimmed.pop_back();  // Remove last character if it's too wide
         }
-        return trimmed;  // Returning the trimmed string
+        return trimmed;
     }
 
 public:
     Text(int x, int y, int w, const lgfx::GFXfont* font, bool scrolling = false)
-        : GUI_Element(x, y, w), font(font), scrolling(scrolling) {
-            h = M5Dial.Display.fontHeight(font); // Set Textbox according to the font height - less pixels to clear
-        };
-    ~Text() override {}
+    : GUI_Element(x, y, w), font(font), scrolling(scrolling) {
+        h = M5Dial.Display.fontHeight(font); // Set Textbox height according to the font height - less pixels to clear
+    };
+    ~Text() {};
 
     void Update(bool force_update = false) override {
-        // Value not assigned
-        if (this->value == nullptr) return;
-
-        // Get Value
-        char* str = static_cast<char*>(this->value);
-
-        // Config text - needed to estimate font width
-        M5Dial.Display.setFont(font);
-        M5Dial.Display.setTextColor(color);
-
-        // Text has not changed and force_update is false
-        if(S_LastValue == str && !force_update){
-            DrawScrolling(str);
+        // Check if value has changed - Scrolling is not triggered
+        if (!hasChanged(force_update) && !CheckScrolling())
             return;
+
+        // Get value & save last value
+        VariantType val = getCurrentValue();
+        std::string str;
+
+        if (std::holds_alternative<std::string>(val)) {
+            str = std::get<std::string>(val);
+        } else {
+            str = "[Invalid Type]";
         }
 
-        // Text has changed or force_update is true
-        S_LastValue = str;
-        scroll_index = 0;   // Reset the scroll index
+        // Config text font - needed to estimate font width
+        M5Dial.Display.setFont(font);
+
+        if(scrolling){
+            str = GetScrolling(str);
+        }
+
+        if(trimming)
+            str = GetTrimmed(str);
 
         Clear();
         Draw(str);
-    };
+    }
 
     void SetFont(const lgfx::GFXfont* font){
         this->font = font;
@@ -120,9 +116,8 @@ public:
         this->scroll_loop = loop;
     }
 
-    //TODO fix clearing the text if trimming is OFF - residues still on the screen
-    //Dynamically get the text width, and assign new value to clear?
     void SetTrimming(bool trimming){ this->trimming = trimming; }
+
 };
 
 #endif //GUITEXT_H
